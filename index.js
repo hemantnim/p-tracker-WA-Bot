@@ -106,11 +106,15 @@ client.on('message_create', async (msg) => {
         }
 
         // Detect Links (More robust detection)
+        // Matches URLs and excludes trailing punctuation common in app shares
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const urlMatch = body.match(urlRegex);
 
         if (urlMatch) {
-            const url = urlMatch[0];
+            let url = urlMatch[0];
+            // Remove common trailing punctuation added by apps or users
+            url = url.replace(/[.,!?\)\]]+$/, '');
+            
             await client.sendMessage(userId, 'Verifying shopping link... please wait. 🔍');
             
             const { price, site, error } = await getPrice(url);

@@ -1,8 +1,8 @@
 const puppeteer = require('puppeteer');
 
 const supportedDomains = [
-    'amazon.in', 'amazon.com', 'amzn.to', 'amzn.in', 'amzn.eu',
-    'flipkart.com', 'fkrt.it', 'flipkart.page.link',
+    'amazon.in', 'amazon.com', 'amzn.to', 'amzn.in', 'amzn.eu', 'a.co',
+    'flipkart.com', 'fkrt.it', 'flipkart.page.link', 'dl.flipkart.com',
     'myntra.com', 'ajio.com', 'meesho.com'
 ];
 
