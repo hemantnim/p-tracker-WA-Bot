@@ -1,7 +1,10 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { getPrice } = require('./scraper');
-const { saveProduct, getTrackingProducts, updatePrice, updateStatus } = require('./database');
+const { 
+    saveProduct, getTrackingProducts, updatePrice, updateStatus, 
+    setReconfirmPrompted, resetReconfirm, getPendingReconfirms 
+} = require('./database');
 
 // Catch unhandled errors to prevent silent crashes
 process.on('unhandledRejection', (reason, promise) => {
@@ -70,6 +73,25 @@ client.on('message_create', async (msg) => {
         const body = msg.body.trim();
 
         console.log(`MESSAGE RECEIVED from ${userId}: ${body}`);
+
+        // Handle Reconfirmation Prompt
+        if (body.toLowerCase() === 'yes' || body.toLowerCase() === 'y') {
+            const products = await getPendingReconfirms();
+            const myProduct = products.find(p => p.user_id === userId);
+            if (myProduct) {
+                await resetReconfirm(myProduct.id);
+                await client.sendMessage(userId, 'Great! I will continue tracking this product for another 24 hours.');
+                return;
+            }
+        } else if (body.toLowerCase() === 'no' || body.toLowerCase() === 'n') {
+            const products = await getPendingReconfirms();
+            const myProduct = products.find(p => p.user_id === userId);
+            if (myProduct) {
+                await updateStatus(myProduct.id, 'completed');
+                await client.sendMessage(userId, 'Stopped tracking this product.');
+                return;
+            }
+        }
 
         // Simple Test Command
         if (body.toLowerCase() === 'ping') {
@@ -180,8 +202,20 @@ async function startTrackingLoop() {
     console.log('TRACKING LOOP: Started background monitoring...');
     while (true) {
         try {
+            // 1. Handle Active Tracking
             const products = await getTrackingProducts();
             for (let product of products) {
+                // Check if 24 hours have passed since last reconfirm
+                const lastReconfirm = new Date(product.last_reconfirm_at);
+                const now = new Date();
+                const hoursPassed = (now - lastReconfirm) / (1000 * 60 * 60);
+
+                if (hoursPassed >= 24) {
+                    await setReconfirmPrompted(product.id);
+                    await client.sendMessage(product.user_id, `⏳ 24-hour limit reached for: ${product.site} product.\nWould you like to continue tracking for another 24 hours? (Reply Yes/No)\nNote: Tracking will stop if no response within 1 hour.`);
+                    continue;
+                }
+
                 const { price } = await getPrice(product.url);
                 if (price) {
                     await updatePrice(product.id, price);
@@ -193,6 +227,20 @@ async function startTrackingLoop() {
                 // Delay between checks to avoid rate limiting
                 await new Promise(r => setTimeout(r, 5000));
             }
+
+            // 2. Handle 1-hour Timeout for Pending Reconfirmations
+            const pending = await getPendingReconfirms();
+            for (let p of pending) {
+                const promptTime = new Date(p.reconfirm_sent_at);
+                const now = new Date();
+                const minutesPassed = (now - promptTime) / (1000 * 60);
+
+                if (minutesPassed >= 60) {
+                    await updateStatus(p.id, 'completed');
+                    await client.sendMessage(p.user_id, `🚫 Tracking stopped for ${p.site} product due to no response within 1 hour.`);
+                }
+            }
+
         } catch (e) {
             console.error('Error in tracking loop:', e);
         }

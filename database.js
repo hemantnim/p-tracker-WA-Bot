@@ -18,6 +18,8 @@ db.serialize(() => {
         threshold_value REAL,
         status TEXT DEFAULT 'tracking',
         last_checked DATETIME,
+        last_reconfirm_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        reconfirm_sent_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -72,6 +74,30 @@ module.exports = {
             db.run(`UPDATE products SET status = ? WHERE id = ?`, [status, id], (err) => {
                 if (err) reject(err);
                 else resolve();
+            });
+        });
+    },
+    setReconfirmPrompted: (id) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE products SET status = 'pending_reconfirm', reconfirm_sent_at = CURRENT_TIMESTAMP WHERE id = ?`, [id], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+    resetReconfirm: (id) => {
+        return new Promise((resolve, reject) => {
+            db.run(`UPDATE products SET status = 'tracking', last_reconfirm_at = CURRENT_TIMESTAMP, reconfirm_sent_at = NULL WHERE id = ?`, [id], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    },
+    getPendingReconfirms: () => {
+        return new Promise((resolve, reject) => {
+            db.all(`SELECT * FROM products WHERE status = 'pending_reconfirm'`, (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
             });
         });
     }
