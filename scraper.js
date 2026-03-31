@@ -68,23 +68,49 @@ async function getPrice(url) {
         } else if (finalUrl.includes('flipkart') || finalUrl.includes('fkrt')) {
             site = 'Flipkart';
             price = await page.evaluate(() => {
+                // 1. Try common selectors
                 const selectors = [
-                    '._30jeq3._16Jk6d', // Desktop price
-                    '._30jeq3',         // Common price
-                    '.nxm97w',          // Mobile price
-                    '.y_Y96A',          // Alternative price
-                    '[class*="price-value"]',
-                    '.web-price',
-                    'div[class*="_30jeq3"]'
+                    '._30jeq3._16Jk6d', 
+                    '._30jeq3', 
+                    '.nxm97w', 
+                    '.y_Y96A',
+                    'div[class*="price-value"]',
+                    'div[class*="Nx9Wp0"]',
+                    'div[class*="_16Jk6d"]'
                 ];
                 for (let s of selectors) {
-                    const elements = document.querySelectorAll(s);
-                    for (let el of elements) {
-                        const text = el.innerText || el.textContent;
-                        if (text) {
-                            const val = parseFloat(text.replace(/[^\d.]/g, '').replace(/,/g, ''));
-                            if (val && val > 0) return val;
-                        }
+                    const el = document.querySelector(s);
+                    if (el && el.innerText) {
+                        const val = parseFloat(el.innerText.replace(/[^\d.]/g, '').replace(/,/g, ''));
+                        if (val && val > 0) return val;
+                    }
+                }
+
+                // 2. Check Meta Tags (Often very reliable)
+                const metaPrice = document.querySelector('meta[itemprop="price"]') || 
+                                  document.querySelector('meta[property="product:price:amount"]');
+                if (metaPrice && metaPrice.content) {
+                    const val = parseFloat(metaPrice.content.replace(/[^\d.]/g, ''));
+                    if (val && val > 0) return val;
+                }
+
+                // 3. Check JSON-LD
+                const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+                for (let script of scripts) {
+                    try {
+                        const data = JSON.parse(script.innerText);
+                        if (data.offers && data.offers.price) return parseFloat(data.offers.price);
+                        if (Array.isArray(data) && data[0].offers && data[0].offers.price) return parseFloat(data[0].offers.price);
+                    } catch (e) {}
+                }
+
+                // 4. Aggressive Fallback: Search for ₹ symbol
+                const allSpans = Array.from(document.querySelectorAll('span, div, h1, h2'));
+                for (let el of allSpans) {
+                    const text = el.innerText;
+                    if (text && text.startsWith('₹') && text.length < 15) {
+                        const val = parseFloat(text.replace(/[^\d.]/g, ''));
+                        if (val && val > 10) return val;
                     }
                 }
                 return null;
