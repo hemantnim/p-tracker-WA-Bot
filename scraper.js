@@ -34,10 +34,12 @@ async function getPrice(url) {
         // Increase timeout and wait for network idle to ensure price loads
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
+        // Get the final URL after redirects
+        const finalUrl = page.url().toLowerCase();
         let price = null;
         let site = '';
 
-        if (lowerUrl.includes('amazon') || lowerUrl.includes('amzn')) {
+        if (finalUrl.includes('amazon') || finalUrl.includes('amzn')) {
             site = 'Amazon';
             price = await page.evaluate(() => {
                 const selectors = [
@@ -47,20 +49,23 @@ async function getPrice(url) {
                     '#priceblock_dealprice', 
                     '#corePrice_feature_div .a-offscreen',
                     '#kindle-price',
-                    '.apexPriceToPay .a-offscreen'
+                    '.apexPriceToPay .a-offscreen',
+                    '#price_inside_buybox',
+                    '.priceToPay'
                 ];
                 for (let s of selectors) {
                     const elements = document.querySelectorAll(s);
                     for (let el of elements) {
-                        if (el && el.innerText) {
-                            const val = parseFloat(el.innerText.replace(/[^\d.]/g, '').replace(/,/g, ''));
+                        const text = el.innerText || el.textContent;
+                        if (text) {
+                            const val = parseFloat(text.replace(/[^\d.]/g, '').replace(/,/g, ''));
                             if (val && val > 0) return val;
                         }
                     }
                 }
                 return null;
             });
-        } else if (lowerUrl.includes('flipkart') || lowerUrl.includes('fkrt')) {
+        } else if (finalUrl.includes('flipkart') || finalUrl.includes('fkrt')) {
             site = 'Flipkart';
             price = await page.evaluate(() => {
                 const selectors = [
@@ -69,13 +74,15 @@ async function getPrice(url) {
                     '.nxm97w',          // Mobile price
                     '.y_Y96A',          // Alternative price
                     '[class*="price-value"]',
-                    '.web-price'
+                    '.web-price',
+                    'div[class*="_30jeq3"]'
                 ];
                 for (let s of selectors) {
                     const elements = document.querySelectorAll(s);
                     for (let el of elements) {
-                        if (el && el.innerText) {
-                            const val = parseFloat(el.innerText.replace(/[^\d.]/g, '').replace(/,/g, ''));
+                        const text = el.innerText || el.textContent;
+                        if (text) {
+                            const val = parseFloat(text.replace(/[^\d.]/g, '').replace(/,/g, ''));
                             if (val && val > 0) return val;
                         }
                     }
