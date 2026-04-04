@@ -18,6 +18,7 @@ async function getPrice(url) {
     try {
         browser = await puppeteer.launch({
             headless: true,
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
