@@ -1,7 +1,8 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbPath = path.resolve(__dirname, 'tracker.db');
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const dbPath = path.resolve(DATA_DIR, 'tracker.db');
 const db = new Database(dbPath);
 
 // Table for products being tracked

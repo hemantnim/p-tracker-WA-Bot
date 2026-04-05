@@ -17,9 +17,19 @@ process.on('uncaughtException', (err) => {
 
 console.log('Starting WhatsApp Bot initialization...');
 
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 8080;
+
+app.get('/', (req, res) => res.send('WhatsApp Bot is running! 🚀'));
+app.listen(port, () => console.log(`Health check server listening on port ${port}`));
+
+const path = require('path');
+const DATA_DIR = process.env.DATA_DIR || './';
+
 const client = new Client({
     authStrategy: new LocalAuth({
-        dataPath: './.wwebjs_auth'
+        dataPath: path.join(DATA_DIR, '.wwebjs_auth')
     }),
     puppeteer: {
         headless: true, // Use true or 'new'
