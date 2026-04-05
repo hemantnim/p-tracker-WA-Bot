@@ -26,5 +26,7 @@ COPY . .
 # Create data directory for persistence
 RUN mkdir -p /app/data
 
+EXPOSE 8080
+
 # Run the bot
 CMD ["node", "index.js"]
