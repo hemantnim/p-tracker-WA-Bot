@@ -24,6 +24,7 @@ const client = new Client({
     puppeteer: {
         headless: true, // Use true or 'new'
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
