@@ -23,19 +23,44 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 let lastQR = '';
+let botStatus = 'Initializing...';
 
-app.get('/', (req, res) => res.send('WhatsApp Bot is running! 🚀 <br> <a href="/qr">Scan QR Code Here</a>'));
+app.get('/', (req, res) => {
+    let html = `<h1>WhatsApp Bot Status: ${botStatus}</h1>`;
+    if (botStatus === 'Waiting for Scan') {
+        html += `<p style="font-size: 1.2rem; color: blue;">👉 <a href="/qr">CLICK HERE TO SCAN QR CODE</a></p>`;
+    } else if (botStatus === 'Ready') {
+        html += `<p style="color: green;">✅ Bot is online and tracking prices!</p>`;
+    }
+    res.send(html);
+});
+
 app.get('/qr', (req, res) => {
+    if (botStatus === 'Ready') {
+        return res.send('<h2>✅ Bot is already logged in and active!</h2><a href="/">Go Back</a>');
+    }
     if (lastQR) {
         QRCodeImage.toDataURL(lastQR, (err, url) => {
             if (err) return res.send('Error generating QR');
-            res.send(`<h2>Scan this with WhatsApp:</h2><img src="${url}">`);
+            res.send(`
+                <div style="text-align: center; font-family: sans-serif; margin-top: 50px;">
+                    <h2>Scan this with WhatsApp:</h2>
+                    <img src="${url}" style="border: 10px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.2); width: 300px;">
+                    <p>Refresh this page if the code expires.</p>
+                    <p><a href="/">Back to Status</a></p>
+                </div>
+            `);
         });
     } else {
-        res.send('QR Code not yet generated. Please wait and refresh... If already scanned, this will stay empty.');
+        res.send('<h2>QR Code not yet generated.</h2><p>Please wait 10-20 seconds and refresh this page...</p><a href="/">Back to Status</a>');
     }
 });
-app.listen(port, () => console.log(`Health check server listening on port ${port}`));
+app.listen(port, () => {
+    console.log(`\n==================================================`);
+    console.log(`HEALTH CHECK SERVER: http://localhost:${port}`);
+    console.log(`IF DEPLOYED: Open your Railway URL to see status.`);
+    console.log(`==================================================\n`);
+});
 
 const path = require('path');
 const DATA_DIR = process.env.DATA_DIR || './';
@@ -63,34 +88,37 @@ const client = new Client({
 const userStates = {};
 
 client.on('qr', (qr) => {
-    console.log('QR RECEIVED: Please scan the code below:');
-    lastQR = qr; // Store for the web UI
+    botStatus = 'Waiting for Scan';
+    lastQR = qr;
     
-    // Generate a direct link for the user to click in logs
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
     console.log('\n--------------------------------------------------');
-    console.log('SCAN YOUR QR CODE HERE (Click the link below):');
-    console.log(qrImageUrl);
+    console.log('👉 NEW QR CODE GENERATED!');
+    console.log('SCAN LINK:', qrImageUrl);
     console.log('--------------------------------------------------\n');
 
     qrcode.generate(qr, { small: true });
 });
 
 client.on('loading_screen', (percent, message) => {
+    botStatus = `Loading: ${percent}%`;
     console.log('LOADING SCREEN:', percent, message);
 });
 
 client.on('authenticated', () => {
+    botStatus = 'Authenticated';
+    lastQR = ''; // Clear QR once logged in
     console.log('AUTHENTICATED: Session saved successfully!');
 });
 
 client.on('auth_failure', msg => {
+    botStatus = 'Auth Failure';
     console.error('AUTHENTICATION FAILURE:', msg);
 });
 
 client.on('ready', () => {
+    botStatus = 'Ready';
     console.log('READY: WhatsApp Bot is fully operational!');
-    console.log('TEST: Try sending the word "ping" to this number.');
     startTrackingLoop();
 });
 
