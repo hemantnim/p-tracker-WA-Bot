@@ -65,6 +65,14 @@ const userStates = {};
 client.on('qr', (qr) => {
     console.log('QR RECEIVED: Please scan the code below:');
     lastQR = qr; // Store for the web UI
+    
+    // Generate a direct link for the user to click in logs
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+    console.log('\n--------------------------------------------------');
+    console.log('SCAN YOUR QR CODE HERE (Click the link below):');
+    console.log(qrImageUrl);
+    console.log('--------------------------------------------------\n');
+
     qrcode.generate(qr, { small: true });
 });
 
