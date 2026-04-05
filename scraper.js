@@ -32,8 +32,18 @@ async function getPrice(url) {
         // Set a more modern and common User-Agent
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
         
+        // Add extra headers to look more like a real browser
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+        });
+
         // Increase timeout and wait for network idle to ensure price loads
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        
+        // Wait a bit more for dynamic content
+        await new Promise(r => setTimeout(r, 5000));
 
         // Get the final URL after redirects
         const finalUrl = page.url().toLowerCase();
