@@ -18,10 +18,23 @@ process.on('uncaughtException', (err) => {
 console.log('Starting WhatsApp Bot initialization...');
 
 const express = require('express');
+const QRCodeImage = require('qrcode');
 const app = express();
 const port = process.env.PORT || 8080;
 
-app.get('/', (req, res) => res.send('WhatsApp Bot is running! 🚀'));
+let lastQR = '';
+
+app.get('/', (req, res) => res.send('WhatsApp Bot is running! 🚀 <br> <a href="/qr">Scan QR Code Here</a>'));
+app.get('/qr', (req, res) => {
+    if (lastQR) {
+        QRCodeImage.toDataURL(lastQR, (err, url) => {
+            if (err) return res.send('Error generating QR');
+            res.send(`<h2>Scan this with WhatsApp:</h2><img src="${url}">`);
+        });
+    } else {
+        res.send('QR Code not yet generated. Please wait and refresh... If already scanned, this will stay empty.');
+    }
+});
 app.listen(port, () => console.log(`Health check server listening on port ${port}`));
 
 const path = require('path');
@@ -51,6 +64,7 @@ const userStates = {};
 
 client.on('qr', (qr) => {
     console.log('QR RECEIVED: Please scan the code below:');
+    lastQR = qr; // Store for the web UI
     qrcode.generate(qr, { small: true });
 });
 
